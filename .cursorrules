@@ -1,0 +1,33 @@
+# APEX SYSTEM RULES (January 2026)
+
+## Environment
+- Location: GitHub Codespace (Linux)
+- Primary Architect: Claude Opus 4.5
+- Primary Vision: Gemini 3.0 Ultra
+- Code Refactor: Claude Sonnet 4.5
+- Persuasion/Outreach: GPT-5.2 Pro
+
+## Model Preferences
+- **Complex Logic/Planning:** Claude Opus 4.5
+- **Quick Code Edits:** Claude Sonnet 4.5
+- **Visual Analysis:** Gemini 3.0 Ultra
+- **Email/DM Writing:** GPT-5.2 Pro
+- **Research:** Perplexity via MCP (when info < 24 hours old)
+
+## Behavior
+- **Auto-Sync:** After every major code change or successful test, remind me: "System stable. Should I push to GitHub main?"
+- **Tool Logic:** Before writing any lead-gen code, check `DOCS/CAPABILITIES.md` to ensure we are calling the right API (Perplexity for search, Unipile for DMs, Findymail for email discovery).
+- **Security:** Never write API keys in code. Use the `.env` file provided in the Codespace secrets.
+- **Error Handling:** If a tool call fails, use Exponential Backoff (retry after 2s, 4s, 8s).
+
+## Environment Sync
+- We are running in a **GitHub Codespace**.
+- All API keys are in the Codespace Environment Secrets.
+- **NEVER** suggest local `localhost` fixes; always use the Codespace forwarded ports.
+
+## Architecture Principles
+- Use Programmatic Tool Calling (Opus 4.5) to orchestrate multiple APIs in one execution block
+- Prefer Python scripts over N8N workflows for portability and troubleshooting
+- Standardize on Next.js for web applications
+- Use "Plan Mode" - provide step-by-step plans before coding
+

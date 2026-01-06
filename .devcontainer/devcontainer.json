@@ -1,0 +1,29 @@
+{
+  "name": "Apex Agency Environment",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/common-utils:1": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode-remote.remote-ssh",
+        "saoudrizwan.claude-dev",
+        "ms-python.python",
+        "github.vscode-pull-request-github"
+      ]
+    }
+  },
+  "postCreateCommand": "pip install anthropic google-generativeai pinecone-client && npm install -g @anthropic-ai/claude-code@latest",
+  "remoteUser": "vscode"
+}
+
