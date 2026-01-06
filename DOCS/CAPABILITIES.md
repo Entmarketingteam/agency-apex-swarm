@@ -35,3 +35,4 @@ This is the "Source of Truth" for tool selection. The Agent reads this file to d
 3. **Cost Optimization**: Use Gemini 3 Flash for simple tasks, reserve Opus 4.5 for complex orchestration
 4. **Context Management**: Use programmatic tool calling to avoid bloating the context window with intermediate results
 
+

@@ -75,3 +75,4 @@ Once you're in the Codespace (or local container):
 
 The Docker error is **not a problem** - it just means you're trying to use the devcontainer locally. Skip local Docker entirely and go straight to GitHub Codespaces (Path 1 above).
 
+
