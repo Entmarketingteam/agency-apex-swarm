@@ -14,15 +14,64 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Google Sheet configuration
+GOOGLE_SHEET_ID = "1R2bYx2-G7cgtkv2GuiYqSZz-A7FOgh1V"
+USE_GOOGLE_SHEETS = True  # Set to True to use Google Sheets instead of CSV
 
-def process_leads():
-    """Process leads from queue."""
+
+def process_leads_from_sheets():
+    """Process leads from Google Sheets."""
     logger.info("=" * 60)
-    logger.info("Starting lead processing...")
+    logger.info("📊 Fetching leads from Google Sheets...")
     logger.info("=" * 60)
     
     try:
-        # Import here to avoid circular imports
+        from api_clients.google_sheets_client import GoogleSheetsClient, convert_sheet_row_to_lead
+        from main import LeadGenerationOrchestrator
+        
+        # Fetch leads from Google Sheet
+        sheets_client = GoogleSheetsClient()
+        sheet_rows = sheets_client.get_unprocessed_leads()
+        
+        if not sheet_rows:
+            logger.info("No unprocessed leads in Google Sheet")
+            return
+        
+        # Convert to Lead objects
+        leads = []
+        for row in sheet_rows:
+            lead = convert_sheet_row_to_lead(row)
+            if lead.handle or lead.name:
+                leads.append(lead)
+        
+        if not leads:
+            logger.info("No valid leads found")
+            return
+        
+        logger.info(f"Found {len(leads)} leads to process from Google Sheets")
+        
+        # Process batch (max 10 at a time)
+        orchestrator = LeadGenerationOrchestrator()
+        results = orchestrator.process_batch(leads[:10])
+        
+        # Log results
+        successful = sum(1 for r in results if r.get('status') == 'completed')
+        failed = sum(1 for r in results if r.get('status') == 'failed')
+        skipped = sum(1 for r in results if r.get('status') == 'skipped')
+        
+        logger.info(f"Batch complete: {successful} successful, {failed} failed, {skipped} skipped")
+        
+    except Exception as e:
+        logger.error(f"Error processing leads from sheets: {e}", exc_info=True)
+
+
+def process_leads_from_csv():
+    """Process leads from CSV queue."""
+    logger.info("=" * 60)
+    logger.info("📁 Processing leads from CSV...")
+    logger.info("=" * 60)
+    
+    try:
         from main import LeadGenerationOrchestrator
         from models.lead import Lead
         
@@ -30,7 +79,6 @@ def process_leads():
         queue_file = "leads/queue.csv"
         if not os.path.exists(queue_file):
             logger.info(f"No queue file found at {queue_file}")
-            logger.info("Create leads/queue.csv to start processing leads")
             return
         
         # Import leads
@@ -49,14 +97,14 @@ def process_leads():
                     leads.append(lead)
         
         if not leads:
-            logger.info("No leads in queue")
+            logger.info("No leads in CSV queue")
             return
         
-        logger.info(f"Found {len(leads)} leads to process")
+        logger.info(f"Found {len(leads)} leads to process from CSV")
         
         # Process batch
         orchestrator = LeadGenerationOrchestrator()
-        results = orchestrator.process_batch(leads[:10])  # Max 10 at a time
+        results = orchestrator.process_batch(leads[:10])
         
         # Log results
         successful = sum(1 for r in results if r.get('status') == 'completed')
@@ -66,7 +114,15 @@ def process_leads():
         logger.info(f"Batch complete: {successful} successful, {failed} failed, {skipped} skipped")
         
     except Exception as e:
-        logger.error(f"Error processing leads: {e}", exc_info=True)
+        logger.error(f"Error processing leads from CSV: {e}", exc_info=True)
+
+
+def process_leads():
+    """Process leads from configured source."""
+    if USE_GOOGLE_SHEETS:
+        process_leads_from_sheets()
+    else:
+        process_leads_from_csv()
 
 
 def main():
