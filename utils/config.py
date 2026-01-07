@@ -35,6 +35,12 @@ class Config:
     GOOGLE_SHEET_ID: str = os.getenv("GOOGLE_SHEET_ID", "")
     GOOGLE_SHEET_TAB_NAME: str = os.getenv("GOOGLE_SHEET_TAB_NAME", "TEST SHEET FOR CURSOR")
     
+    # Slack Integration
+    SLACK_BOT_TOKEN: str = os.getenv("SLACK_BOT_TOKEN", "")
+    SLACK_SIGNING_SECRET: str = os.getenv("SLACK_SIGNING_SECRET", "")
+    SLACK_APP_TOKEN: str = os.getenv("SLACK_APP_TOKEN", "")
+    SLACK_CHANNEL_ID: str = os.getenv("SLACK_CHANNEL_ID", "")
+    
     @classmethod
     def validate_required_keys(cls) -> list[str]:
         """Validate that all required API keys are present."""
