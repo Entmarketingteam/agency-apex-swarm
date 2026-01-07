@@ -31,6 +31,10 @@ class Config:
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
     DATA_FOR_SEO_API_KEY: str = os.getenv("DATA_FOR_SEO_API_KEY", "")
     
+    # Google Sheets
+    GOOGLE_SHEET_ID: str = os.getenv("GOOGLE_SHEET_ID", "")
+    GOOGLE_SHEET_TAB_NAME: str = os.getenv("GOOGLE_SHEET_TAB_NAME", "TEST SHEET FOR CURSOR")
+    
     @classmethod
     def validate_required_keys(cls) -> list[str]:
         """Validate that all required API keys are present."""

@@ -7,9 +7,9 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Your Google Sheet ID (extracted from URL)
-SPREADSHEET_ID = "1R2bYx2-G7cgtkv2GuiYqSZz-A7FOgh1V"
-SHEET_GID = "1597738643"
+# Default values (can be overridden by environment variables)
+DEFAULT_SPREADSHEET_ID = "1Uxspvk_99MSdWmDI6Ur_XqbBukoOcjmeGWyhCk-l8Ew"
+DEFAULT_SHEET_NAME = "TEST SHEET FOR CURSOR"
 
 
 class GoogleSheetsClient:
@@ -17,11 +17,12 @@ class GoogleSheetsClient:
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or config.GOOGLE_API_KEY
-        self.spreadsheet_id = SPREADSHEET_ID
+        self.spreadsheet_id = config.GOOGLE_SHEET_ID or DEFAULT_SPREADSHEET_ID
+        self.sheet_name = config.GOOGLE_SHEET_TAB_NAME or DEFAULT_SHEET_NAME
     
     def get_leads_from_sheet(
         self,
-        sheet_name: str = "Sheet1",
+        sheet_name: Optional[str] = None,
         range_name: str = "A:Z"
     ) -> List[Dict[str, Any]]:
         """
@@ -35,6 +36,9 @@ class GoogleSheetsClient:
             List of lead dictionaries
         """
         import httpx
+        
+        # Use instance sheet_name if not provided
+        sheet_name = sheet_name or self.sheet_name
         
         # Google Sheets API v4 endpoint
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.spreadsheet_id}/values/{sheet_name}!{range_name}"
@@ -84,7 +88,7 @@ class GoogleSheetsClient:
     
     def get_unprocessed_leads(
         self,
-        sheet_name: str = "Sheet1",
+        sheet_name: Optional[str] = None,
         status_column: str = "status"
     ) -> List[Dict[str, Any]]:
         """

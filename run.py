@@ -16,6 +16,7 @@ logger = get_logger(__name__)
 
 # Google Sheet configuration
 GOOGLE_SHEET_ID = "1R2bYx2-G7cgtkv2GuiYqSZz-A7FOgh1V"
+GOOGLE_SHEET_TAB = "TEST SHEET FOR CURSOR"  # Your dedicated sheet tab
 USE_GOOGLE_SHEETS = True  # Set to True to use Google Sheets instead of CSV
 
 
