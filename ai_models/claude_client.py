@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 class ClaudeClient:
     """Client for Claude Opus 4.5 - complex logic and orchestration."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-3-opus-20240229"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
         self.api_key = api_key or config.ANTHROPIC_API_KEY
         self.model = model
         self.client = Anthropic(api_key=self.api_key)

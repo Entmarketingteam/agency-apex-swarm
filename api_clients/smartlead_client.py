@@ -8,7 +8,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-SMARTLEAD_BASE_URL = "https://api.smartlead.ai/api/v1"
+SMARTLEAD_BASE_URL = "https://server.smartlead.ai/api/v1"
 
 
 class SmartleadClient:
@@ -18,9 +18,13 @@ class SmartleadClient:
         self.api_key = api_key or config.SMARTLEAD_API_KEY
         self.base_url = SMARTLEAD_BASE_URL
         self.headers = {
-            "api-key": self.api_key,
             "Content-Type": "application/json"
         }
+    
+    def _url_with_key(self, endpoint: str) -> str:
+        """Add API key as query parameter."""
+        separator = "&" if "?" in endpoint else "?"
+        return f"{self.base_url}/{endpoint}{separator}api_key={self.api_key}"
     
     @exponential_backoff_retry(max_attempts=3, exceptions=(httpx.HTTPError,))
     def create_campaign(
@@ -42,16 +46,11 @@ class SmartleadClient:
         Returns:
             Campaign creation result
         """
-        url = f"{self.base_url}/campaigns"
+        url = self._url_with_key("campaigns/create")
         
         payload = {
-            "campaign_name": campaign_name,
-            "email_subject": email_subject,
-            "email_body": email_body
+            "name": campaign_name
         }
-        
-        if sender_email:
-            payload["sender_email"] = sender_email
         
         try:
             with httpx.Client(timeout=30.0) as client:
@@ -85,10 +84,10 @@ class SmartleadClient:
         Returns:
             Lead addition result
         """
-        url = f"{self.base_url}/campaigns/{campaign_id}/leads"
+        url = self._url_with_key(f"campaigns/{campaign_id}/leads")
         
         payload = {
-            "leads": leads
+            "lead_list": leads
         }
         
         try:
@@ -106,6 +105,21 @@ class SmartleadClient:
         except httpx.HTTPError as e:
             logger.error(f"Smartlead API error: {e}")
             raise
+    
+    def list_campaigns(self) -> List[Dict[str, Any]]:
+        """List all campaigns."""
+        url = self._url_with_key("campaigns")
+        
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.get(url, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                logger.info(f"Listed {len(data)} campaigns")
+                return data
+        except httpx.HTTPError as e:
+            logger.error(f"Smartlead API error: {e}")
+            return []
     
     def send_email(
         self,

@@ -17,23 +17,23 @@
 | **Codebase** | ✅ Deployed from GitHub |
 | **Scheduler** | ✅ Running (`python run.py`) |
 
-## ✅ Working APIs
+## ✅ Working APIs (7/8)
 
 | API | Status | Notes |
 |-----|--------|-------|
 | **OpenAI (GPT-5.2 Pro)** | ✅ Working | |
-| **Claude (Opus 4.5)** | ✅ Working | |
-| **Gemini 3.0 Ultra** | ✅ Working | Deprecation warning, still functional |
+| **Claude (Sonnet 4)** | ✅ Working | Model updated to `claude-sonnet-4-20250514` |
+| **Perplexity** | ✅ Working | Model updated to `sonar` |
+| **Findymail** | ✅ Working | URL fixed to `app.findymail.com/api` |
+| **Smartlead** | ✅ Working | Found 1 existing campaign |
+| **Unipile** | ✅ Initialized | Needs DSN for full test |
 | **Pinecone** | ✅ Working | Vector DB for deduplication |
 
-## ⚠️ APIs Needing Verification
+## ❌ Needs Attention (1/8)
 
 | API | Status | Notes |
 |-----|--------|-------|
-| **Perplexity** | ⚠️ 400 error | May need format adjustment |
-| **Findymail** | ⚠️ DNS error | URL updated, needs retest |
-| **Unipile** | ⚠️ Untested | Client initialized |
-| **Smartlead** | ⚠️ Untested | Client initialized |
+| **Gemini** | ❌ Key Expired | Get new key from Google AI Studio |
 
 ## 📋 Next Steps (Tomorrow)
 

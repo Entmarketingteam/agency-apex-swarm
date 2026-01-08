@@ -8,7 +8,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-FINDYMAIL_BASE_URL = "https://api.findymail.com"
+FINDYMAIL_BASE_URL = "https://app.findymail.com/api"
 
 
 class FindymailClient:
@@ -18,49 +18,43 @@ class FindymailClient:
         self.api_key = api_key or config.FINDYMAIL_API_KEY
         self.base_url = FINDYMAIL_BASE_URL
         self.headers = {
-            "X-API-Key": self.api_key,
+            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
     
     @exponential_backoff_retry(max_attempts=3, exceptions=(httpx.HTTPError,))
     def find_email(
         self,
+        name: Optional[str] = None,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
         domain: Optional[str] = None,
-        linkedin_url: Optional[str] = None,
-        twitter_handle: Optional[str] = None,
-        instagram_handle: Optional[str] = None
+        linkedin_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Find email address from various identifiers.
+        Find email address from name and domain or LinkedIn URL.
         
         Args:
-            first_name: First name
-            last_name: Last name
-            domain: Company domain
-            linkedin_url: LinkedIn profile URL
-            twitter_handle: Twitter/X handle
-            instagram_handle: Instagram handle
+            name: Full name (or will be constructed from first_name + last_name)
+            first_name: First name (used if name not provided)
+            last_name: Last name (used if name not provided)
+            domain: Company domain (required for name search)
+            linkedin_url: LinkedIn profile URL (alternative to name+domain)
         
         Returns:
             Email discovery results
         """
-        url = f"{self.base_url}/api/v1/email-finder"
+        # Build full name if not provided
+        if not name and first_name:
+            name = f"{first_name} {last_name or ''}".strip()
         
-        payload = {}
-        if first_name:
-            payload["first_name"] = first_name
-        if last_name:
-            payload["last_name"] = last_name
-        if domain:
-            payload["domain"] = domain
+        # Use LinkedIn endpoint if LinkedIn URL provided
         if linkedin_url:
-            payload["linkedin_url"] = linkedin_url
-        if twitter_handle:
-            payload["twitter_handle"] = twitter_handle
-        if instagram_handle:
-            payload["instagram_handle"] = instagram_handle
+            url = f"{self.base_url}/search/linkedin"
+            payload = {"linkedin_url": linkedin_url}
+        else:
+            url = f"{self.base_url}/search/name"
+            payload = {"name": name, "domain": domain}
         
         try:
             with httpx.Client(timeout=30.0) as client:
@@ -79,22 +73,28 @@ class FindymailClient:
             logger.error(f"Findymail API error: {e}")
             raise
     
-    def find_from_handle(self, handle: str, platform: str = "instagram") -> Dict[str, Any]:
+    def find_from_linkedin(self, linkedin_url: str) -> Dict[str, Any]:
         """
-        Find email from a social media handle.
+        Find email from a LinkedIn profile URL.
         
         Args:
-            handle: Social media handle
-            platform: Platform (instagram, twitter, etc.)
+            linkedin_url: LinkedIn profile URL
         
         Returns:
             Email discovery results
         """
-        if platform.lower() == "instagram":
-            return self.find_email(instagram_handle=handle)
-        elif platform.lower() in ["twitter", "x"]:
-            return self.find_email(twitter_handle=handle)
-        else:
-            logger.warning(f"Unsupported platform for email discovery: {platform}")
-            return {"email": None, "confidence": 0, "sources": [], "status": "unsupported_platform"}
+        return self.find_email(linkedin_url=linkedin_url)
+    
+    def find_from_name_domain(self, name: str, domain: str) -> Dict[str, Any]:
+        """
+        Find email from a person's name and company domain.
+        
+        Args:
+            name: Full name
+            domain: Company domain
+        
+        Returns:
+            Email discovery results
+        """
+        return self.find_email(name=name, domain=domain)
 

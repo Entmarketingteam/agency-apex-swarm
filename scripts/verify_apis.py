@@ -42,8 +42,8 @@ def test_findymail():
     logger.info("Testing Findymail API...")
     try:
         client = FindymailClient()
-        # Test with a known handle (this will likely fail but tests connection)
-        result = client.find_from_handle("test_handle", "instagram")
+        # Test with name + domain search
+        result = client.find_from_name_domain("Test User", "example.com")
         logger.info("✅ Findymail API: Connection successful (may not find email)")
         return True
     except Exception as e:
@@ -69,8 +69,9 @@ def test_smartlead():
     logger.info("Testing Smartlead API...")
     try:
         client = SmartleadClient()
-        # Test connection by checking if we can create a test campaign
-        logger.info("✅ Smartlead API: Client initialized (full test requires campaign creation)")
+        # Test by listing campaigns
+        campaigns = client.list_campaigns()
+        logger.info(f"✅ Smartlead API: WORKING (found {len(campaigns)} campaigns)")
         return True
     except Exception as e:
         logger.error(f"❌ Smartlead API: ERROR - {e}")

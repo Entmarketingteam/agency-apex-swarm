@@ -26,7 +26,7 @@ class PerplexityClient:
     def search(
         self,
         query: str,
-        model: str = "llama-3.1-sonar-large-128k-online"
+        model: str = "sonar"
     ) -> Dict[str, Any]:
         """
         Search for real-time information using Perplexity.
