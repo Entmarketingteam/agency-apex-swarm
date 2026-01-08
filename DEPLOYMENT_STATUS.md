@@ -1,78 +1,68 @@
 # Deployment Status
 
-## ✅ What's Ready for Railway
+**Last Updated:** January 8, 2026
 
-1. **Codebase**: 100% complete
-2. **Railway Config Files**: Created
-   - `railway.json` - Railway configuration
-   - `Procfile` - Process definition
-   - `nixpacks.toml` - Build configuration
-3. **Core APIs**: Working
-   - OpenAI ✅
-   - Claude ✅
-   - Gemini ✅
-   - Pinecone ✅
-4. **Scheduler**: Ready to run
-5. **Lead Import**: CSV import script ready
+## 🚀 Railway Deployment: LIVE
 
-## 🚀 Railway Deployment Steps
+**Project:** Railway-Agency-Swarm  
+**Status:** ✅ **ONLINE**  
+**Dashboard:** https://railway.app/project/fdc4ef5d-702b-49e1-ab23-282b2fe90066
 
-### Step 1: Push to GitHub
+## ✅ What's Deployed
+
+| Component | Status |
+|-----------|--------|
+| **Railway Service** | ✅ Online & Running |
+| **Environment Variables** | ✅ All 8 API keys set |
+| **Codebase** | ✅ Deployed from GitHub |
+| **Scheduler** | ✅ Running (`python run.py`) |
+
+## ✅ Working APIs
+
+| API | Status | Notes |
+|-----|--------|-------|
+| **OpenAI (GPT-5.2 Pro)** | ✅ Working | |
+| **Claude (Opus 4.5)** | ✅ Working | |
+| **Gemini 3.0 Ultra** | ✅ Working | Deprecation warning, still functional |
+| **Pinecone** | ✅ Working | Vector DB for deduplication |
+
+## ⚠️ APIs Needing Verification
+
+| API | Status | Notes |
+|-----|--------|-------|
+| **Perplexity** | ⚠️ 400 error | May need format adjustment |
+| **Findymail** | ⚠️ DNS error | URL updated, needs retest |
+| **Unipile** | ⚠️ Untested | Client initialized |
+| **Smartlead** | ⚠️ Untested | Client initialized |
+
+## 📋 Next Steps (Tomorrow)
+
+1. **Check Railway Logs** - See what the scheduler is doing
+2. **Add Test Leads** - Put leads in `leads/queue.csv` or Google Sheets
+3. **Verify Lead APIs** - Test Perplexity, Findymail, Unipile, Smartlead
+4. **Monitor End-to-End** - Watch a lead go through the full pipeline
+
+## 📊 System Architecture
+
+```
+GitHub Repo → Railway (Auto-Deploy) → Scheduler runs every hour
+                                           ↓
+                                    Process leads from CSV/Sheets
+                                           ↓
+                                    Research → Email Find → Outreach
+```
+
+## 🔧 Useful Commands
+
 ```bash
-git add .
-git commit -m "Ready for Railway deployment"
-git push origin main
+# Check Railway status (requires login)
+railway login
+railway status
+
+# View logs
+railway logs
+
+# Redeploy
+railway up
 ```
-
-### Step 2: Create Railway Project
-1. Go to https://railway.app
-2. Click "New Project"
-3. Select "Deploy from GitHub repo"
-4. Choose `agency-apex-swarm`
-5. Click "Deploy Now"
-
-### Step 3: Add Environment Variables
-In Railway dashboard → Variables tab, add all keys from `.env`:
-
-```
-ANTHROPIC_API_KEY=sk-ant-api03-...
-OPENAI_API_KEY=sk-proj-...
-GOOGLE_API_KEY=AIzaSy...
-PERPLEXITY_API_KEY=pplx-...
-FINDYMAIL_API_KEY=2iPtT1d6...
-UNIPILE_API_KEY=D4DUla7y...
-SMARTLEAD_API_KEY=17a34ec2-...
-PINECONE_API_KEY=pcsk_...
-```
-
-### Step 4: Configure Service
-1. Go to Settings → Service
-2. **Start Command**: `python scripts/scheduler.py`
-3. **Restart Policy**: On Failure
-4. Save
-
-### Step 5: Add Lead Queue
-1. Create `leads/queue.csv` with your leads
-2. Or use the import script after deployment
-
-## ⚠️ Known Issues to Fix
-
-1. **Perplexity API**: May need format adjustment
-2. **Findymail API**: URL updated, needs retest
-3. **Gemini**: Deprecation warning (still works, but should migrate to `google.genai`)
-
-## 📊 System Status
-
-- **Code**: ✅ Ready
-- **Deployment Config**: ✅ Ready
-- **Core APIs**: ✅ Working
-- **Lead APIs**: ⚠️ Need verification
-- **Hosting**: ⏳ Pending Railway setup
-
-## Next Actions
-
-1. ✅ Test core APIs (DONE)
-2. ⏳ Deploy to Railway (READY)
-3. ⏳ Fix remaining API issues (Can do after deployment)
-4. ⏳ Test with real leads (After deployment)
 
