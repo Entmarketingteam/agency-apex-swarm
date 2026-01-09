@@ -34,6 +34,10 @@ class Config:
     # Google Sheets
     GOOGLE_SHEET_ID: str = os.getenv("GOOGLE_SHEET_ID", "")
     GOOGLE_SHEET_TAB_NAME: str = os.getenv("GOOGLE_SHEET_TAB_NAME", "TEST SHEET FOR CURSOR")
+    GOOGLE_SHEETS_CREDENTIALS: str = os.getenv("GOOGLE_SHEETS_CREDENTIALS", "")
+    
+    # Outreach / Messaging (optional)
+    MANYCHAT_API_KEY: str = os.getenv("MANYCHAT_API_KEY", "")
     
     # Slack Integration
     SLACK_BOT_TOKEN: str = os.getenv("SLACK_BOT_TOKEN", "")

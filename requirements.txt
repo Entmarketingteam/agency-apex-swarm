@@ -24,6 +24,11 @@ python-dateutil>=2.8.0
 Pillow>=10.0.0
 schedule>=1.2.0
 
+# Google APIs (Sheets write/export via service account)
+google-api-python-client>=2.110.0
+google-auth>=2.25.0
+google-auth-httplib2>=0.2.0
+
 # Slack Integration
 slack-bolt>=1.18.0
 slack-sdk>=3.23.0

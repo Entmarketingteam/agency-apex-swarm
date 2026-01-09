@@ -1,6 +1,7 @@
 """Google Sheets API client for reading leads."""
 
 import os
+import re
 from typing import Dict, Any, Optional, List
 from utils.config import config
 from utils.logger import get_logger
@@ -116,6 +117,8 @@ class GoogleSheetsClient:
 def convert_sheet_row_to_lead(row: Dict[str, Any]):
     """Convert a sheet row to a Lead object."""
     from models.lead import Lead
+    from datetime import datetime
+    from dateutil import parser as date_parser
     
     # Map common column names to Lead fields
     name = row.get("name") or row.get("creator_name") or row.get("full_name") or ""
@@ -124,13 +127,90 @@ def convert_sheet_row_to_lead(row: Dict[str, Any]):
     bio = row.get("bio") or row.get("description") or row.get("notes") or ""
     email = row.get("email") or ""
     linkedin = row.get("linkedin") or row.get("linkedin_url") or ""
+    profile_url = row.get("profile url") or row.get("profile_url") or row.get("url") or ""
+    instagram_handle = row.get("instagram_handle") or row.get("instagram") or row.get("ig") or ""
+    
+    # Outreach / pipeline fields (optional)
+    status = row.get("status") or ""
+    owner = row.get("owner") or ""
+    priority = row.get("priority") or ""
+    search_query = row.get("search query") or row.get("search_query") or ""
+    
+    def _parse_bool(value: Any) -> Optional[bool]:
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return value
+        v = str(value).strip().lower()
+        if not v:
+            return None
+        if v in ("true", "yes", "y", "1", "checked"):
+            return True
+        if v in ("false", "no", "n", "0"):
+            return False
+        return None
+    
+    def _parse_int(value: Any) -> Optional[int]:
+        if value is None:
+            return None
+        v = str(value).strip()
+        if not v:
+            return None
+        v = v.replace(",", "")
+        try:
+            return int(float(v))
+        except Exception:
+            return None
+    
+    def _parse_date(value: Any) -> Optional[datetime]:
+        if value is None:
+            return None
+        v = str(value).strip()
+        if not v:
+            return None
+        try:
+            return date_parser.parse(v)
+        except Exception:
+            return None
+    
+    def _parse_hashtags(value: Any) -> List[str]:
+        if not value:
+            return []
+        if isinstance(value, list):
+            return [str(x).strip().lstrip("#") for x in value if str(x).strip()]
+        raw = str(value)
+        # Handles: "#LTK, #wellness" or "LTK wellness"
+        parts = [p.strip() for p in re.split(r"[,;\n]", raw) if p.strip()]
+        tags = []
+        for p in parts:
+            if not p:
+                continue
+            if " " in p and not p.startswith("#"):
+                # if someone pasted "LTK wellness"
+                tags.extend([x.strip().lstrip("#") for x in p.split() if x.strip()])
+            else:
+                tags.append(p.lstrip("#"))
+        return list(dict.fromkeys([t for t in tags if t]))  # de-dupe, preserve order
     
     return Lead(
         name=name if name else None,
         handle=handle if handle else None,
         platform=platform.lower() if platform else "instagram",
+        profile_url=profile_url if profile_url else None,
         bio=bio if bio else None,
+        hashtags=_parse_hashtags(row.get("hashtags") or row.get("tags") or ""),
+        follower_count=_parse_int(row.get("follower_count") or row.get("follower count") or row.get("followers")),
         email=email if email else None,
-        linkedin_url=linkedin if linkedin else None
+        linkedin_url=linkedin if linkedin else None,
+        instagram_handle=instagram_handle if instagram_handle else None,
+        status=status if status else None,
+        contacted=_parse_bool(row.get("contacted")),
+        contacted_date=_parse_date(row.get("contacted date") or row.get("contacted_date")),
+        last_contact=_parse_date(row.get("last contact") or row.get("last_contact")),
+        next_follow_up=_parse_date(row.get("next follow-up") or row.get("next_follow-up") or row.get("next_follow_up")),
+        owner=owner if owner else None,
+        priority=priority if priority else None,
+        search_query=search_query if search_query else None,
+        found_date=_parse_date(row.get("found date") or row.get("found_date")),
     )
 

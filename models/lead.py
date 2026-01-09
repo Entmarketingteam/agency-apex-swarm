@@ -13,13 +13,16 @@ class Lead(BaseModel):
     name: Optional[str] = None
     handle: Optional[str] = Field(None, description="Social media handle (Instagram, TikTok, etc.)")
     platform: Optional[str] = Field(None, description="Platform: instagram, tiktok, linkedin, etc.")
+    profile_url: Optional[str] = Field(None, description="Full profile URL")
     
     # Contact Information
     email: Optional[EmailStr] = None
     linkedin_url: Optional[str] = None
+    instagram_handle: Optional[str] = Field(None, description="Instagram handle (if known)")
     
     # Profile Data
     bio: Optional[str] = None
+    hashtags: Optional[List[str]] = Field(default_factory=list, description="Hashtags found in bio/content")
     follower_count: Optional[int] = None
     engagement_rate: Optional[float] = None
     
@@ -31,9 +34,23 @@ class Lead(BaseModel):
     research_data: Optional[Dict[str, Any]] = None
     
     # Outreach Status
+    status: Optional[str] = Field(
+        None,
+        description="Pipeline status (e.g. New, Contacted, Replied, Interested, Not Interested)"
+    )
     contact_status: Optional[str] = Field(None, description="pending, contacted, responded, converted")
     outreach_method: Optional[str] = Field(None, description="email, linkedin_dm, both")
     outreach_date: Optional[datetime] = None
+    contacted: Optional[bool] = Field(None, description="Whether lead/prospect has been contacted")
+    contacted_date: Optional[datetime] = None
+    last_contact: Optional[datetime] = None
+    next_follow_up: Optional[datetime] = None
+    owner: Optional[str] = Field(None, description="Assigned team member")
+    priority: Optional[str] = Field(None, description="Priority: High, Medium, Low")
+    
+    # Prospecting Metadata
+    search_query: Optional[str] = None
+    found_date: Optional[datetime] = None
     
     # Metadata
     created_at: datetime = Field(default_factory=datetime.now)
