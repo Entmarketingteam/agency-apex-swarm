@@ -5,6 +5,8 @@ import os
 import sys
 import time
 import schedule
+import threading
+import asyncio
 
 # Ensure the project root is in the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -126,6 +128,16 @@ def process_leads():
         process_leads_from_csv()
 
 
+def start_slack_bot():
+    """Start the Slack bot in a separate thread."""
+    try:
+        from slack_bot.app import run_slack_bot_sync
+        logger.info("🤖 Starting Slack bot...")
+        run_slack_bot_sync()
+    except Exception as e:
+        logger.error(f"Failed to start Slack bot: {e}", exc_info=True)
+
+
 def main():
     """Main entry point."""
     logger.info("=" * 60)
@@ -139,8 +151,22 @@ def main():
     else:
         logger.info("✅ All API keys configured")
     
+    # Check if Slack tokens are configured
+    if config.SLACK_BOT_TOKEN and config.SLACK_SIGNING_SECRET and config.SLACK_APP_TOKEN:
+        logger.info("✅ Slack tokens configured - starting Slack bot")
+        # Start Slack bot in a separate thread
+        slack_thread = threading.Thread(target=start_slack_bot, daemon=True)
+        slack_thread.start()
+        logger.info("🤖 Slack bot thread started")
+    else:
+        logger.info("⚠️ Slack tokens not configured - Slack bot disabled")
+    
     # Schedule: Process leads every hour
     schedule.every().hour.do(process_leads)
+    
+    # Process immediately on start
+    logger.info("📊 Processing initial batch of leads...")
+    process_leads()
     
     logger.info("Scheduler running - processing leads every hour")
     logger.info("Waiting for scheduled tasks...")
