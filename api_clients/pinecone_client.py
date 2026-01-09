@@ -79,10 +79,36 @@ class PineconeClient:
             Success status
         """
         try:
+            # Validate embedding is a list of floats
+            if not isinstance(embedding, list):
+                raise ValueError(f"Embedding must be a list, got {type(embedding)}")
+            
+            if not embedding:
+                raise ValueError("Embedding cannot be empty")
+            
+            # Ensure all values are floats
+            embedding = [float(v) for v in embedding]
+            
+            # Validate lead_id is a string
+            if not isinstance(lead_id, str):
+                lead_id = str(lead_id)
+            
+            # Ensure metadata values are serializable
+            clean_metadata = {}
+            if metadata:
+                for key, value in metadata.items():
+                    # Convert non-serializable types
+                    if isinstance(value, datetime):
+                        clean_metadata[key] = value.isoformat()
+                    elif value is None:
+                        clean_metadata[key] = ""
+                    else:
+                        clean_metadata[key] = str(value)
+            
             vectors = [{
                 "id": lead_id,
                 "values": embedding,
-                "metadata": metadata or {}
+                "metadata": clean_metadata or {}
             }]
             
             self.index.upsert(vectors=vectors)
@@ -90,6 +116,7 @@ class PineconeClient:
             return True
         except Exception as e:
             logger.error(f"Pinecone upsert error: {e}")
+            logger.error(f"lead_id: {lead_id}, embedding type: {type(embedding)}, embedding length: {len(embedding) if isinstance(embedding, list) else 'N/A'}")
             raise
     
     @exponential_backoff_retry(max_attempts=3, exceptions=(Exception,))
