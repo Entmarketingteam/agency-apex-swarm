@@ -38,6 +38,13 @@ def create_slack_app() -> Optional["AsyncApp"]:
         logger.error("SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET required")
         return None
     
+    # Check if channel restriction is configured
+    allowed_channel_id = config.SLACK_CHANNEL_ID
+    if allowed_channel_id:
+        logger.info(f"🔒 Bot restricted to channel: {allowed_channel_id}")
+    else:
+        logger.warning("⚠️ No SLACK_CHANNEL_ID set - bot will respond to ALL channels")
+    
     app = AsyncApp(
         token=bot_token,
         signing_secret=signing_secret
@@ -49,11 +56,21 @@ def create_slack_app() -> Optional["AsyncApp"]:
     
     handler = SlackLeadHandler(slack_client=app.client)
     
+    # Get allowed channel ID from config
+    allowed_channel_id = config.SLACK_CHANNEL_ID
+    
     @app.event("message")
     async def handle_message_events(event, say, client):
-        """Handle all message events."""
+        """Handle all message events - only from allowed channel."""
         # Skip bot messages
         if event.get("bot_id"):
+            return
+        
+        # Check if message is from allowed channel
+        channel_id = event.get("channel", "")
+        if allowed_channel_id and channel_id != allowed_channel_id:
+            # Silently ignore messages from other channels
+            logger.debug(f"Ignoring message from channel {channel_id} (not allowed channel)")
             return
         
         text = event.get("text", "")
@@ -62,12 +79,19 @@ def create_slack_app() -> Optional["AsyncApp"]:
         handles = find_all_instagram_urls(text)
         
         if handles:
-            logger.info(f"Processing {len(handles)} Instagram handle(s)")
+            logger.info(f"Processing {len(handles)} Instagram handle(s) from channel {channel_id}")
             await handler.handle_message(event)
     
     @app.event("app_mention")
     async def handle_app_mention(event, say):
-        """Handle @mentions of the bot."""
+        """Handle @mentions of the bot - only from allowed channel."""
+        # Check if mention is from allowed channel
+        channel_id = event.get("channel", "")
+        if allowed_channel_id and channel_id != allowed_channel_id:
+            # Silently ignore mentions from other channels
+            logger.debug(f"Ignoring mention from channel {channel_id} (not allowed channel)")
+            return
+        
         text = event.get("text", "")
         user = event.get("user", "")
         
@@ -84,12 +108,21 @@ def create_slack_app() -> Optional["AsyncApp"]:
     
     @app.command("/apex")
     async def handle_apex_command(ack, body, client):
-        """Handle /apex slash command."""
+        """Handle /apex slash command - only from allowed channel."""
+        channel_id = body.get("channel_id", "")
+        
+        # Check if command is from allowed channel
+        if allowed_channel_id and channel_id != allowed_channel_id:
+            await ack(
+                response_type="ephemeral",
+                text=f"❌ This command can only be used in the designated lead intake channel."
+            )
+            return
+        
         await ack()
         
         text = body.get("text", "").strip()
         user_id = body.get("user_id", "")
-        channel_id = body.get("channel_id", "")
         
         if not text:
             await client.chat_postEphemeral(
@@ -175,4 +208,5 @@ def run_slack_bot_sync():
 
 if __name__ == "__main__":
     run_slack_bot_sync()
+
 
