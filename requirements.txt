@@ -12,6 +12,7 @@ aiohttp>=3.9.0
 
 # Data Validation
 pydantic>=2.5.0
+email-validator>=2.0.0
 
 # Environment & Config
 python-dotenv>=1.0.0
