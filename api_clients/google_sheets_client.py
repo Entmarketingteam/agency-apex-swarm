@@ -112,6 +112,247 @@ class GoogleSheetsClient:
         
         logger.info(f"Found {len(unprocessed)} unprocessed leads")
         return unprocessed
+    
+    def _get_sheet_headers(self, sheet_name: Optional[str] = None) -> Dict[str, int]:
+        """
+        Get column headers and their indices.
+        
+        Args:
+            sheet_name: Name of the sheet tab
+        
+        Returns:
+            Dictionary mapping column names (lowercase) to column indices (0-based)
+        """
+        import httpx
+        
+        sheet_name = sheet_name or self.sheet_name
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.spreadsheet_id}/values/{sheet_name}!1:1"
+        
+        params = {
+            "key": self.api_key,
+            "majorDimension": "ROWS"
+        }
+        
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                values = data.get("values", [])
+                if not values or not values[0]:
+                    return {}
+                
+                headers = {}
+                for i, header in enumerate(values[0]):
+                    headers[header.lower().strip()] = i
+                
+                return headers
+        except Exception as e:
+            logger.error(f"Error getting sheet headers: {e}")
+            return {}
+    
+    def _find_row_by_handle(
+        self,
+        handle: str,
+        sheet_name: Optional[str] = None,
+        handle_column: str = "handle"
+    ) -> Optional[int]:
+        """
+        Find the row number (1-based) for a given handle.
+        
+        Args:
+            handle: Instagram handle (with or without @)
+            sheet_name: Name of the sheet tab
+            handle_column: Column name to search in
+        
+        Returns:
+            Row number (1-based) or None if not found
+        """
+        # Normalize handle
+        handle = handle.lstrip("@").lower().strip()
+        
+        sheet_name = sheet_name or self.sheet_name
+        all_leads = self.get_leads_from_sheet(sheet_name)
+        
+        # Search for matching handle
+        for idx, lead in enumerate(all_leads, start=2):  # Start at row 2 (row 1 is headers)
+            lead_handle = lead.get(handle_column, "").lstrip("@").lower().strip()
+            if lead_handle == handle:
+                return idx
+        
+        return None
+    
+    def update_lead_status(
+        self,
+        handle: str,
+        status: str,
+        updates: Optional[Dict[str, Any]] = None,
+        sheet_name: Optional[str] = None
+    ) -> bool:
+        """
+        Update lead status and other fields in Google Sheet.
+        
+        Args:
+            handle: Instagram handle (with or without @)
+            status: New status (e.g., "completed", "failed", "skipped")
+            updates: Dictionary of additional fields to update
+                e.g., {"email": "user@example.com", "vibe_score": 85}
+            sheet_name: Name of the sheet tab
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        import httpx
+        
+        sheet_name = sheet_name or self.sheet_name
+        updates = updates or {}
+        
+        # Find the row
+        row_num = self._find_row_by_handle(handle, sheet_name)
+        if not row_num:
+            logger.warning(f"Could not find row for handle: {handle}")
+            return False
+        
+        # Get headers to map column names to indices
+        headers = self._get_sheet_headers(sheet_name)
+        if not headers:
+            logger.error("Could not get sheet headers")
+            return False
+        
+        # Prepare update data
+        update_data = {"status": status}
+        update_data.update(updates)
+        
+        # Map field names to column indices
+        # Common field mappings
+        field_mappings = {
+            "email": ["email"],
+            "vibe_score": ["vibe_score", "vibe score", "score"],
+            "research": ["research", "research_summary", "research summary", "notes"],
+            "linkedin": ["linkedin", "linkedin_url", "linkedin url"],
+            "name": ["name", "creator_name", "full_name"],
+            "bio": ["bio", "description"],
+        }
+        
+        # Build update requests
+        update_requests = []
+        
+        for field, value in update_data.items():
+            if value is None:
+                continue
+            
+            # Find column index
+            col_idx = None
+            if field in field_mappings:
+                for col_name in field_mappings[field]:
+                    if col_name in headers:
+                        col_idx = headers[col_name]
+                        break
+            
+            if col_idx is None:
+                # Try direct match
+                if field.lower() in headers:
+                    col_idx = headers[field.lower()]
+            
+            if col_idx is not None:
+                # Convert to A1 notation (e.g., A2, B2, AA2, etc.)
+                def num_to_col_letter(n):
+                    """Convert 0-based column index to Excel column letter (A, B, ..., Z, AA, AB, ...)"""
+                    result = ""
+                    while n >= 0:
+                        result = chr(65 + (n % 26)) + result
+                        n = n // 26 - 1
+                    return result
+                
+                col_letter = num_to_col_letter(col_idx)
+                cell_range = f"{sheet_name}!{col_letter}{row_num}"
+                
+                update_requests.append({
+                    "range": cell_range,
+                    "values": [[str(value)]]
+                })
+        
+        if not update_requests:
+            logger.warning(f"No valid columns found to update for handle: {handle}")
+            return False
+        
+        # Batch update using Google Sheets API
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.spreadsheet_id}/values:batchUpdate"
+        
+        params = {"key": self.api_key}
+        
+        payload = {
+            "valueInputOption": "USER_ENTERED",
+            "data": update_requests
+        }
+        
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(url, params=params, json=payload)
+                response.raise_for_status()
+                
+                logger.info(f"Updated lead {handle}: status={status}, fields={list(updates.keys())}")
+                return True
+                
+        except httpx.HTTPError as e:
+            logger.error(f"Google Sheets API error updating {handle}: {e}")
+            if hasattr(e, 'response') and e.response:
+                logger.error(f"Response: {e.response.text}")
+            return False
+        except Exception as e:
+            logger.error(f"Error updating sheet for {handle}: {e}")
+            return False
+    
+    def update_lead_after_processing(
+        self,
+        handle: str,
+        result: Dict[str, Any],
+        sheet_name: Optional[str] = None
+    ) -> bool:
+        """
+        Update lead in sheet after processing is complete.
+        
+        Args:
+            handle: Instagram handle
+            result: Processing result from orchestrator
+            sheet_name: Name of the sheet tab
+        
+        Returns:
+            True if successful
+        """
+        status = result.get("status", "unknown")
+        
+        # Extract data from result
+        updates = {}
+        
+        # Get email from contact discovery
+        contact_data = result.get("steps", {}).get("contact_discovery", {})
+        if contact_data.get("email"):
+            updates["email"] = contact_data["email"]
+        if contact_data.get("linkedin_url"):
+            updates["linkedin"] = contact_data["linkedin_url"]
+        
+        # Get vibe score
+        vibe_check = result.get("steps", {}).get("vibe_check", {})
+        if vibe_check.get("score"):
+            updates["vibe_score"] = vibe_check["score"]
+        
+        # Get research summary
+        research = result.get("steps", {}).get("research", {})
+        if research.get("summary"):
+            updates["research"] = research["summary"][:500]  # Limit length
+        
+        # Map status
+        status_map = {
+            "completed": "completed",
+            "failed": "failed",
+            "skipped": "skipped",
+            "processing": "processing"
+        }
+        final_status = status_map.get(status, status)
+        
+        return self.update_lead_status(handle, final_status, updates, sheet_name)
 
 
 def convert_sheet_row_to_lead(row: Dict[str, Any]):

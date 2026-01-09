@@ -178,13 +178,23 @@ class SlackLeadHandler:
         
         try:
             # Import processing modules
-            from main import process_single_lead
+            from main import LeadGenerationOrchestrator
+            from models.lead import Lead
+            from api_clients.google_sheets_client import GoogleSheetsClient
+            
+            # Create Lead object
+            lead = Lead(
+                handle=handle,
+                platform="instagram"
+            )
             
             # Process the lead
-            result = await asyncio.to_thread(
-                process_single_lead,
-                f"@{handle}"
-            )
+            orchestrator = LeadGenerationOrchestrator()
+            result = orchestrator.process_lead(lead)
+            
+            # Update Google Sheet if lead was added there
+            sheets_client = GoogleSheetsClient()
+            sheets_client.update_lead_after_processing(handle, result)
             
             # Send completion message
             await self.send_completion_message(channel, handle, result, thread_ts)

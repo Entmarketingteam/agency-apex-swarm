@@ -40,12 +40,18 @@ def process_leads_from_sheets():
             logger.info("No unprocessed leads in Google Sheet")
             return
         
-        # Convert to Lead objects
+        # Convert to Lead objects and keep mapping to original rows
         leads = []
+        lead_to_row_map = {}  # Map lead handle to original row data
+        
         for row in sheet_rows:
             lead = convert_sheet_row_to_lead(row)
             if lead.handle or lead.name:
                 leads.append(lead)
+                # Store handle for mapping back to sheet row
+                handle = lead.handle.lstrip("@") if lead.handle else None
+                if handle:
+                    lead_to_row_map[handle] = row
         
         if not leads:
             logger.info("No valid leads found")
@@ -57,12 +63,30 @@ def process_leads_from_sheets():
         orchestrator = LeadGenerationOrchestrator()
         results = orchestrator.process_batch(leads[:10])
         
+        # Update Google Sheet with results
+        logger.info("📝 Updating Google Sheet with processing results...")
+        update_count = 0
+        for result in results:
+            lead_id = result.get("lead_id", "")
+            handle = lead_id.lstrip("@") if lead_id else None
+            
+            if handle and handle in lead_to_row_map:
+                success = sheets_client.update_lead_after_processing(handle, result)
+                if success:
+                    update_count += 1
+                    logger.info(f"✅ Updated sheet for {handle}")
+                else:
+                    logger.warning(f"⚠️ Failed to update sheet for {handle}")
+            else:
+                logger.warning(f"⚠️ Could not find handle mapping for {lead_id}")
+        
         # Log results
         successful = sum(1 for r in results if r.get('status') == 'completed')
         failed = sum(1 for r in results if r.get('status') == 'failed')
         skipped = sum(1 for r in results if r.get('status') == 'skipped')
         
         logger.info(f"Batch complete: {successful} successful, {failed} failed, {skipped} skipped")
+        logger.info(f"📝 Sheet updates: {update_count}/{len(results)} leads updated")
         
     except Exception as e:
         logger.error(f"Error processing leads from sheets: {e}", exc_info=True)
