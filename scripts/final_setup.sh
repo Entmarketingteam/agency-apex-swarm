@@ -30,3 +30,4 @@ echo "   - Settings → Service"
 echo "   - Start Command: python scripts/scheduler.py"
 echo "   - Restart Policy: On Failure"
 
+

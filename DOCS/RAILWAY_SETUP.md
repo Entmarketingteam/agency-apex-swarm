@@ -73,3 +73,4 @@ Railway will automatically deploy when you:
 3. Adjust scheduler frequency if needed
 4. Set up alerts for failures
 
+

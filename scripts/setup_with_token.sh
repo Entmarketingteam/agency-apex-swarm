@@ -41,3 +41,4 @@ echo "Next: Configure service in Railway dashboard:"
 echo "  - Start Command: python scripts/scheduler.py"
 echo "  - Restart Policy: On Failure"
 
+

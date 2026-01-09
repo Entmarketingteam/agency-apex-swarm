@@ -88,3 +88,4 @@ class PerplexityClient:
         
         return self.search(query)
 
+

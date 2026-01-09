@@ -25,3 +25,4 @@ echo "1. Set environment variables: railway variables set KEY=value"
 echo "2. Deploy: railway up"
 echo ""
 
+

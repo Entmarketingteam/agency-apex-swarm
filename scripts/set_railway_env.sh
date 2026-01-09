@@ -29,3 +29,4 @@ echo "✅ All environment variables set!"
 echo ""
 echo "🚀 Ready to deploy with: railway up"
 
+

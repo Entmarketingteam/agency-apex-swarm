@@ -82,3 +82,4 @@ Or check: https://railway.app/project/fdc4ef5d-702b-49e1-ab23-282b2fe90066
 
 **Just run `bash setup_railway.sh` and you're done!** 🎉
 
+

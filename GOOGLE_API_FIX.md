@@ -45,3 +45,4 @@ This is more secure but requires more setup.
 - **Tab Name:** `TEST SHEET FOR CURSOR`
 - **Status:** Configured ✅ (just needs valid API key)
 
+

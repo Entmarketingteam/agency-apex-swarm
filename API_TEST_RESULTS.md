@@ -43,3 +43,4 @@
   - Set `UNIPILE_DSN` environment variable (e.g., `api1.unipile.com`)
 - System can run with 7/8 APIs - Gemini is optional for visual vibe checks
 
+

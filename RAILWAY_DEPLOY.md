@@ -95,3 +95,4 @@ PINECONE_API_KEY=pcsk_42FJgZ_9L3myTJeW5T5dvfZcqvXTt3P7tcBBCNyHUz7M19FaNVuZkiu77x
 
 Your Railway project: https://railway.app/project/fdc4ef5d-702b-49e1-ab23-282b2fe90066
 
+

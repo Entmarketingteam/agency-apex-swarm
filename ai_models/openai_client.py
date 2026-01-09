@@ -184,3 +184,4 @@ class OpenAIClient:
         message = self.generate(prompt, system_prompt=system_prompt, temperature=0.7, max_tokens=200)
         return message.strip()
 
+

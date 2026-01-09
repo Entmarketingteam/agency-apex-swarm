@@ -87,3 +87,4 @@ class OutreachResult(BaseModel):
     error: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.now)
 
+
