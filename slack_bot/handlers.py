@@ -116,10 +116,17 @@ class SlackLeadHandler:
         
         try:
             # Check for duplicates first
-            pinecone = PineconeClient()
-            is_duplicate = pinecone.check_duplicate(handle)
+            from ai_models.openai_client import OpenAIClient
             
-            if is_duplicate:
+            pinecone = PineconeClient()
+            openai = OpenAIClient()
+            
+            # Generate embedding for duplicate check
+            lead_text = f"{handle} instagram"
+            embedding = openai.generate_embedding(lead_text)
+            duplicate_id = pinecone.check_duplicate(embedding, threshold=0.95)
+            
+            if duplicate_id:
                 return {
                     "handle": handle,
                     "status": "duplicate",
