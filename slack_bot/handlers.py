@@ -258,21 +258,54 @@ class SlackLeadHandler:
             logger.info(f"[Slack] Would send: Lead processed @{handle}")
             return
         
-        email = result.get("email", "Not found")
-        vibe_score = result.get("vibe_score", "N/A")
-        research = result.get("research_summary", "No research available")[:200]
-        outreach = result.get("outreach_channel", "email")
+        # Extract data from result structure
+        steps = result.get("steps", {})
+        
+        # Get email from contact discovery
+        contact_data = steps.get("contact_discovery", {})
+        email = contact_data.get("email") or "Not found"
+        
+        # Get vibe score from vibe check
+        vibe_check = steps.get("vibe_check", {})
+        vibe_score = vibe_check.get("score")
+        if vibe_score is None:
+            vibe_score = "N/A"
+        else:
+            # Convert 0-10 scale to 0-100 if needed
+            if isinstance(vibe_score, (int, float)) and vibe_score <= 10:
+                vibe_score = int(vibe_score * 10)
+        
+        # Get research summary
+        research_data = steps.get("research", {})
+        research = research_data.get("summary") or research_data.get("content") or "No research available"
+        if len(research) > 200:
+            research = research[:200] + "..."
+        
+        # Get outreach info
+        outreach_data = steps.get("outreach", {})
+        outreach_channel = "email"
+        if outreach_data.get("email", {}).get("success"):
+            outreach_channel = "email"
+        elif outreach_data.get("linkedin_dm", {}).get("success"):
+            outreach_channel = "LinkedIn DM"
+        elif outreach_data.get("email", {}) or outreach_data.get("linkedin_dm", {}):
+            outreach_channel = "email/LinkedIn"
         
         # Emoji based on vibe score
-        if isinstance(vibe_score, int):
-            if vibe_score >= 80:
+        if isinstance(vibe_score, (int, float)):
+            score_num = int(vibe_score)
+            if score_num >= 80:
                 vibe_emoji = "✨"
-            elif vibe_score >= 60:
+            elif score_num >= 60:
                 vibe_emoji = "👍"
             else:
                 vibe_emoji = "🤔"
         else:
             vibe_emoji = ""
+        
+        # Get Google Sheet ID (use config or fallback)
+        sheet_id = config.GOOGLE_SHEET_ID or "1Uxspvk_99MSdWmDI6Ur_XqbBukoOcjmeGWyhCk-l8Ew"
+        sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit" if sheet_id else None
         
         blocks = [
             {
@@ -292,21 +325,24 @@ class SlackLeadHandler:
             {
                 "type": "section",
                 "fields": [
-                    {"type": "mrkdwn", "text": f"*Research:*\n{research}..."},
-                    {"type": "mrkdwn", "text": f"*Outreach:*\n📤 Added to {outreach} campaign"}
+                    {"type": "mrkdwn", "text": f"*Research:*\n{research}"},
+                    {"type": "mrkdwn", "text": f"*Outreach:*\n📤 Added to {outreach_channel} campaign"}
                 ]
-            },
-            {
+            }
+        ]
+        
+        # Add button only if sheet URL is valid
+        if sheet_url and sheet_id:
+            blocks.append({
                 "type": "actions",
                 "elements": [
                     {
                         "type": "button",
                         "text": {"type": "plain_text", "text": "View in Sheet"},
-                        "url": f"https://docs.google.com/spreadsheets/d/{config.GOOGLE_SHEET_ID}/edit"
+                        "url": sheet_url
                     }
                 ]
-            }
-        ]
+            })
         
         await self.slack_client.chat_postMessage(
             channel=channel,
