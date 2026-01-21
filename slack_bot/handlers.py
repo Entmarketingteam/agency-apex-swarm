@@ -148,8 +148,12 @@ class SlackLeadHandler:
                 "created_at": datetime.utcnow().isoformat()
             }
             
-            # Append to sheet
-            # sheets.append_lead(lead_data)
+            # Append to sheet immediately so it can be updated later
+            append_success = sheets.append_lead(lead_data)
+            if append_success:
+                logger.info(f"Added lead @{handle} to Google Sheet")
+            else:
+                logger.warning(f"Failed to add lead @{handle} to Google Sheet, will try to update later")
             
             logger.info(f"Created lead for @{handle} from Slack")
             
@@ -199,9 +203,15 @@ class SlackLeadHandler:
             orchestrator = LeadGenerationOrchestrator()
             result = orchestrator.process_lead(lead)
             
-            # Update Google Sheet if lead was added there
+            # Update Google Sheet (will create if doesn't exist)
             sheets_client = GoogleSheetsClient()
-            sheets_client.update_lead_after_processing(handle, result)
+            # Remove @ if present for handle lookup
+            clean_handle = handle.lstrip("@")
+            update_success = sheets_client.update_lead_after_processing(clean_handle, result)
+            if update_success:
+                logger.info(f"Updated Google Sheet for @{clean_handle}")
+            else:
+                logger.warning(f"Failed to update Google Sheet for @{clean_handle}")
             
             # Send completion message
             await self.send_completion_message(channel, handle, result, thread_ts)

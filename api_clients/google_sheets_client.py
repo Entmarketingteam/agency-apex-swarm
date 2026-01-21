@@ -304,6 +304,99 @@ class GoogleSheetsClient:
             logger.error(f"Error updating sheet for {handle}: {e}")
             return False
     
+    def append_lead(
+        self,
+        lead_data: Dict[str, Any],
+        sheet_name: Optional[str] = None
+    ) -> bool:
+        """
+        Append a new lead row to Google Sheet.
+        
+        Args:
+            lead_data: Dictionary with lead fields (handle, name, platform, etc.)
+            sheet_name: Name of the sheet tab
+        
+        Returns:
+            True if successful
+        """
+        import httpx
+        
+        sheet_name = sheet_name or self.sheet_name
+        
+        # Get headers to determine column order
+        headers = self._get_sheet_headers(sheet_name)
+        if not headers:
+            logger.warning("Could not get sheet headers, trying to append anyway")
+            # Try to append with common column order
+            headers = {
+                "handle": 0, "name": 1, "platform": 2, "email": 3,
+                "status": 4, "source": 5, "created_at": 6
+            }
+        
+        # Build row data in correct column order
+        max_col = max(headers.values()) if headers else 10
+        row_values = [""] * (max_col + 1)
+        
+        # Map lead_data to columns
+        for field, value in lead_data.items():
+            # Find column index
+            col_idx = None
+            if field.lower() in headers:
+                col_idx = headers[field.lower()]
+            else:
+                # Try common variations
+                variations = {
+                    "handle": ["handle", "username", "instagram", "ig"],
+                    "name": ["name", "creator_name", "full_name"],
+                    "platform": ["platform"],
+                    "email": ["email"],
+                    "status": ["status"],
+                    "source": ["source", "origin"],
+                    "bio": ["bio", "description", "notes"],
+                    "linkedin": ["linkedin", "linkedin_url", "linkedin url"]
+                }
+                for key, aliases in variations.items():
+                    if field.lower() in aliases:
+                        for alias in aliases:
+                            if alias in headers:
+                                col_idx = headers[alias]
+                                break
+                        if col_idx:
+                            break
+            
+            if col_idx is not None and value:
+                row_values[col_idx] = str(value)
+        
+        # Append row using Google Sheets API
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.spreadsheet_id}/values/{sheet_name}!A:append"
+        
+        params = {
+            "key": self.api_key,
+            "valueInputOption": "USER_ENTERED",
+            "insertDataOption": "INSERT_ROWS"
+        }
+        
+        payload = {
+            "values": [row_values]
+        }
+        
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(url, params=params, json=payload)
+                response.raise_for_status()
+                
+                logger.info(f"Appended lead to sheet: {lead_data.get('handle', 'unknown')}")
+                return True
+                
+        except httpx.HTTPError as e:
+            logger.error(f"Google Sheets API error appending lead: {e}")
+            if hasattr(e, 'response') and e.response:
+                logger.error(f"Response: {e.response.text}")
+            return False
+        except Exception as e:
+            logger.error(f"Error appending lead to sheet: {e}")
+            return False
+    
     def update_lead_after_processing(
         self,
         handle: str,
@@ -312,6 +405,7 @@ class GoogleSheetsClient:
     ) -> bool:
         """
         Update lead in sheet after processing is complete.
+        If lead doesn't exist, creates it first.
         
         Args:
             handle: Instagram handle
@@ -321,6 +415,24 @@ class GoogleSheetsClient:
         Returns:
             True if successful
         """
+        sheet_name = sheet_name or self.sheet_name
+        
+        # Check if lead exists
+        row_num = self._find_row_by_handle(handle, sheet_name)
+        
+        if not row_num:
+            # Lead doesn't exist, create it first
+            logger.info(f"Lead {handle} not found in sheet, creating new row")
+            lead_data = {
+                "handle": f"@{handle.lstrip('@')}",
+                "platform": "instagram",
+                "status": "processing",
+                "source": "slack"
+            }
+            if not self.append_lead(lead_data, sheet_name):
+                logger.error(f"Failed to create lead row for {handle}")
+                return False
+        
         status = result.get("status", "unknown")
         
         # Extract data from result
@@ -333,15 +445,24 @@ class GoogleSheetsClient:
         if contact_data.get("linkedin_url"):
             updates["linkedin"] = contact_data["linkedin_url"]
         
-        # Get vibe score
+        # Get vibe score (convert to 0-100 if needed)
         vibe_check = result.get("steps", {}).get("vibe_check", {})
-        if vibe_check.get("score"):
-            updates["vibe_score"] = vibe_check["score"]
+        vibe_score = vibe_check.get("score")
+        if vibe_score is not None:
+            # Convert 0-10 scale to 0-100 if needed
+            if isinstance(vibe_score, (int, float)) and vibe_score <= 10:
+                updates["vibe_score"] = int(vibe_score * 10)
+            else:
+                updates["vibe_score"] = int(vibe_score)
         
-        # Get research summary
+        # Get research summary (use content, not summary)
         research = result.get("steps", {}).get("research", {})
-        if research.get("summary"):
-            updates["research"] = research["summary"][:500]  # Limit length
+        research_text = research.get("content") or research.get("summary") or ""
+        # Handle error messages - don't save generic error text
+        if research_text and "don't have direct" not in research_text.lower() and "can't reliably" not in research_text.lower():
+            updates["research"] = str(research_text)[:500]  # Limit length
+        elif research.get("error"):
+            updates["research"] = f"Research error: {research.get('error')}"
         
         # Map status
         status_map = {
