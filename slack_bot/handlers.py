@@ -275,11 +275,13 @@ class SlackLeadHandler:
             if isinstance(vibe_score, (int, float)) and vibe_score <= 10:
                 vibe_score = int(vibe_score * 10)
         
-        # Get research summary
+        # Get research summary (Perplexity returns "content", not "summary")
         research_data = steps.get("research", {})
-        research = research_data.get("summary") or research_data.get("content") or "No research available"
-        if len(research) > 200:
+        research = research_data.get("content") or research_data.get("summary") or "No research available"
+        if isinstance(research, str) and len(research) > 200:
             research = research[:200] + "..."
+        elif not isinstance(research, str):
+            research = str(research)[:200] if research else "No research available"
         
         # Get outreach info
         outreach_data = steps.get("outreach", {})
@@ -305,7 +307,10 @@ class SlackLeadHandler:
         
         # Get Google Sheet ID (use config or fallback)
         sheet_id = config.GOOGLE_SHEET_ID or "1Uxspvk_99MSdWmDI6Ur_XqbBukoOcjmeGWyhCk-l8Ew"
+        if not sheet_id or sheet_id.strip() == "":
+            sheet_id = "1Uxspvk_99MSdWmDI6Ur_XqbBukoOcjmeGWyhCk-l8Ew"
         sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit" if sheet_id else None
+        logger.info(f"Using Google Sheet ID: {sheet_id[:20]}... (URL: {sheet_url})")
         
         blocks = [
             {

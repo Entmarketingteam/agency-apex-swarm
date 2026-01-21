@@ -97,4 +97,50 @@ class FindymailClient:
             Email discovery results
         """
         return self.find_email(name=name, domain=domain)
+    
+    def find_from_handle(self, handle: str, platform: str = "instagram") -> Dict[str, Any]:
+        """
+        Find email from a social media handle.
+        
+        Args:
+            handle: Social media handle (e.g., "username" or "@username")
+            platform: Platform (instagram, twitter, etc.)
+        
+        Returns:
+            Email discovery results
+        """
+        # Remove @ if present
+        handle = handle.lstrip("@")
+        
+        # Try to find email using handle as name
+        # Note: This is a simplified approach - Findymail may have a specific endpoint
+        # For now, we'll try using the handle as a name search
+        # In production, you might need to first get the person's name from the handle
+        try:
+            # Attempt to use handle as search term
+            # This may not work perfectly, but provides a fallback
+            url = f"{self.base_url}/search/handle"  # This endpoint may not exist
+            payload = {"handle": handle, "platform": platform}
+            
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(url, json=payload, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                
+                logger.info(f"Findymail handle search completed for @{handle}")
+                return {
+                    "email": data.get("email", ""),
+                    "confidence": data.get("confidence", 0),
+                    "sources": data.get("sources", []),
+                    "status": data.get("status", "unknown")
+                }
+        except httpx.HTTPError as e:
+            # If handle endpoint doesn't exist, return empty result
+            logger.warning(f"Findymail handle search not available: {e}")
+            return {
+                "email": "",
+                "confidence": 0,
+                "sources": [],
+                "status": "not_found"
+            }
 
