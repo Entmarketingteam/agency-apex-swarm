@@ -79,11 +79,18 @@ agency-apex-swarm/
 ├── .devcontainer/          # Cloud environment config
 │   └── devcontainer.json
 ├── .cursorrules            # Agent behavior rules
-├── DOCS/
-│   └── CAPABILITIES.md     # Tool selection guide
-├── main.py                 # Main orchestration script (to be created)
+├── docs/                   # 📚 All documentation
+│   ├── INDEX.md           # Start here - documentation index
+│   ├── setup/             # Setup guides
+│   ├── deployment/        # Deployment guides
+│   ├── troubleshooting/   # Debug & fixes
+│   └── reference/         # Playbook, schema, scenarios
+├── main.py                 # Main orchestration script
+├── run.py                  # Entry point (Railway/Production)
 └── README.md              # This file
 ```
+
+**📚 Documentation:** See [docs/INDEX.md](docs/INDEX.md) for complete documentation.
 
 ## Model Hierarchy (2026 Apex Stack)
 
@@ -102,8 +109,21 @@ agency-apex-swarm/
 ## Key Files
 
 - `.cursorrules` - Tells the Agent how to behave and which models to use
-- `DOCS/CAPABILITIES.md` - Tool selection matrix for the Agent
+- `docs/INDEX.md` - Complete documentation index
+- `main.py` - Lead generation orchestrator
+- `run.py` - Production entry point (Slack bot + Google Sheets scheduler)
 - `.devcontainer/devcontainer.json` - Cloud environment configuration
+
+## Documentation
+
+**📚 All documentation is in `/docs/`:**
+
+- **Getting Started:** [Quick Start](docs/setup/QUICKSTART.md)
+- **Setup:** [Full Setup Guide](docs/setup/SETUP.md)
+- **Slack Integration:** [Slack Bot Setup](docs/setup/SLACK.md)
+- **Deployment:** [Railway Deployment](docs/deployment/RAILWAY.md)
+- **Troubleshooting:** [Common Issues](docs/troubleshooting/COMMON_ISSUES.md)
+- **Reference:** [System Playbook](docs/reference/PLAYBOOK.md)
 
 ## Troubleshooting
 

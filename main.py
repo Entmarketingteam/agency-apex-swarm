@@ -129,11 +129,41 @@ class LeadGenerationOrchestrator:
     def _research_lead(self, lead: Lead) -> Dict[str, Any]:
         """Research a lead using Perplexity."""
         try:
-            query = f"Research {lead.name or lead.handle} on {lead.platform or 'social media'}. Find follower count, engagement rate, content style, brand partnerships, and recent activity."
+            # For Instagram, get bio data first
+            bio_data = {}
+            if lead.platform == "instagram" and lead.handle:
+                try:
+                    clean_handle = lead.handle.lstrip("@")
+                    bio_data = self.perplexity.get_instagram_bio(clean_handle)
+                    
+                    # Update lead with bio if found
+                    if bio_data.get("bio"):
+                        lead.bio = bio_data["bio"]
+                    
+                    # If email found in bio, use it (but Findymail will still try)
+                    if bio_data.get("email_in_bio"):
+                        logger.info(f"Found email in bio: {bio_data['email_in_bio']}")
+                    
+                    # Update follower count if found
+                    if bio_data.get("follower_count"):
+                        lead.follower_count = bio_data["follower_count"]
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to get Instagram bio: {e}")
+            
+            # General research
             research = self.perplexity.research_creator(
                 creator_name=lead.name or lead.handle or "",
                 platform=lead.platform or "instagram"
             )
+            
+            # Merge bio data into research results
+            if bio_data:
+                research["bio_data"] = bio_data
+                # Add bio to content if not already there
+                if bio_data.get("bio") and bio_data["bio"] not in research.get("content", ""):
+                    research["content"] = f"Bio: {bio_data['bio']}\n\n{research.get('content', '')}"
+            
             return research
         except Exception as e:
             logger.error(f"Research error: {e}")
