@@ -102,51 +102,85 @@ class PerplexityClient:
         # Remove @ if present
         clean_handle = handle.lstrip("@")
         
-        query = f"What is the Instagram bio text for @{clean_handle}? Include the exact bio text, any email addresses mentioned in the bio, follower count, and profile description. Format: Bio: [exact text], Email: [if found], Followers: [count]"
+        # More specific query to get exact bio text
+        query = f"Visit instagram.com/{clean_handle} and provide the exact bio text from their Instagram profile. Include: 1) The complete bio text exactly as shown, 2) Any email addresses in the bio, 3) Follower count if visible. Format your response as: BIO: [exact bio text here] EMAIL: [email if found] FOLLOWERS: [count]"
         
         result = self.search(query)
         
         # Extract structured data from Perplexity response
         content = result.get("content", "")
         
-        # Try to extract bio text
+        # Try to extract bio text with multiple patterns
         bio = ""
         email_in_bio = None
         follower_count = None
         
-        # Look for "Bio:" pattern
-        bio_match = re.search(r'[Bb]io[:\s]+(.+?)(?:[Ee]mail|$)', content, re.DOTALL)
+        # Pattern 1: Look for "BIO:" or "Bio:" at start of line
+        bio_match = re.search(r'(?:^|\n)\s*[Bb][Ii][Oo][:\s]+(.+?)(?:\n\s*(?:[Ee][Mm][Aa][Ii][Ll]|[Ff][Oo][Ll][Ll][Oo][Ww]|[Cc][Oo][Nn][Tt][Aa][Cc][Tt])|$)', content, re.DOTALL | re.MULTILINE)
         if bio_match:
             bio = bio_match.group(1).strip()
-            # Clean up common prefixes
-            bio = re.sub(r'^[:\-\s]+', '', bio)
-            bio = bio.split('\n')[0]  # Take first line if multiple
-        
-        # Extract email from bio or content
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        email_matches = re.findall(email_pattern, content)
-        if email_matches:
-            email_in_bio = email_matches[0]
-        
-        # Extract follower count
-        follower_match = re.search(r'[Ff]ollowers?[:\s]+([\d,]+[KMB]?)', content)
-        if follower_match:
-            count_str = follower_match.group(1).replace(',', '')
-            if count_str.endswith('K'):
-                follower_count = int(float(count_str[:-1]) * 1000)
-            elif count_str.endswith('M'):
-                follower_count = int(float(count_str[:-1]) * 1000000)
-            elif count_str.endswith('B'):
-                follower_count = int(float(count_str[:-1]) * 1000000000)
+        else:
+            # Pattern 2: Look for quoted text (often bio is in quotes)
+            quote_match = re.search(r'["\'](.+?)["\']', content)
+            if quote_match and len(quote_match.group(1)) > 10:  # Reasonable bio length
+                bio = quote_match.group(1).strip()
             else:
+                # Pattern 3: Look for text between "bio" and next section
+                bio_match2 = re.search(r'[Bb]io[graphy]*[:\s]+(.+?)(?:\n\n|\n[A-Z]|$)', content, re.DOTALL)
+                if bio_match2:
+                    bio = bio_match2.group(1).strip()
+        
+        # Clean up bio text
+        if bio:
+            # Remove common prefixes/suffixes
+            bio = re.sub(r'^(?:The|Their|This|Instagram)\s+', '', bio, flags=re.IGNORECASE)
+            bio = re.sub(r'[:\-\s]+$', '', bio)
+            # Remove if it's too short (likely not a real bio)
+            if len(bio) < 5:
+                bio = ""
+            # Limit length
+            bio = bio[:500]
+        
+        # Extract email from bio or content (prioritize bio)
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        if bio:
+            email_matches = re.findall(email_pattern, bio)
+            if email_matches:
+                email_in_bio = email_matches[0]
+        
+        if not email_in_bio:
+            email_matches = re.findall(email_pattern, content)
+            if email_matches:
+                email_in_bio = email_matches[0]
+        
+        # Extract follower count with better patterns
+        follower_patterns = [
+            r'[Ff]ollowers?[:\s]+([\d,]+[KMB]?)',
+            r'([\d,]+[KMB]?)\s+[Ff]ollowers?',
+            r'([\d,]+[KMB]?)\s*[Ff]',
+        ]
+        for pattern in follower_patterns:
+            follower_match = re.search(pattern, content)
+            if follower_match:
+                count_str = follower_match.group(1).replace(',', '').strip()
                 try:
-                    follower_count = int(count_str)
-                except:
-                    pass
+                    if count_str.upper().endswith('K'):
+                        follower_count = int(float(count_str[:-1]) * 1000)
+                    elif count_str.upper().endswith('M'):
+                        follower_count = int(float(count_str[:-1]) * 1000000)
+                    elif count_str.upper().endswith('B'):
+                        follower_count = int(float(count_str[:-1]) * 1000000000)
+                    else:
+                        follower_count = int(float(count_str))
+                    break
+                except (ValueError, AttributeError):
+                    continue
+        
+        logger.info(f"Extracted bio for @{clean_handle}: bio_length={len(bio)}, email={email_in_bio is not None}, followers={follower_count}")
         
         return {
             "content": content,
-            "bio": bio[:500] if bio else "",  # Limit length
+            "bio": bio,
             "email_in_bio": email_in_bio,
             "follower_count": follower_count,
             "citations": result.get("citations", []),

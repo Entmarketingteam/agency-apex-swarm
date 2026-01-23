@@ -7,18 +7,29 @@ Instagram bio text, emails, and contact information are not being extracted from
 
 ### Solution
 The system now uses Perplexity to extract Instagram bio data. The `get_instagram_bio()` method:
-- Queries Perplexity for the exact bio text
+- Queries Perplexity for the exact bio text with improved query format
+- Uses multiple regex patterns to extract bio text reliably
 - Extracts email addresses mentioned in the bio
 - Gets follower count and profile information
 - Populates the `bio` field in the Lead model
+- **Email found in bio is now prioritized** over Findymail results
 
 **How it works:**
 1. When a lead is processed, if platform is "instagram", the system calls `perplexity.get_instagram_bio(handle)`
-2. Bio data is extracted and merged into research results
+2. Bio data is extracted using improved regex patterns (handles multiple formats)
 3. The lead's `bio` field is updated automatically
-4. Email found in bio is logged (Findymail will still attempt discovery)
+4. **Email found in bio is used directly** (no need for Findymail if email is in bio)
+5. Bio is saved to Google Sheets during processing
+6. Research data includes bio_data for reference
 
-**Status:** ✅ Fixed in latest version
+**Recent Improvements (Jan 2026):**
+- ✅ Enhanced Perplexity query for better bio extraction
+- ✅ Multiple regex patterns for robust parsing
+- ✅ Bio field now saved to Google Sheets
+- ✅ Email from bio prioritized in contact discovery
+- ✅ Better logging for debugging extraction issues
+
+**Status:** ✅ Fixed and improved in latest version
 
 ---
 

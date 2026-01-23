@@ -67,6 +67,8 @@ class LeadGenerationOrchestrator:
             logger.info("Step 1: Research & Validation")
             research_data = self._research_lead(lead)
             results["steps"]["research"] = research_data
+            # Store research data in lead for later access
+            lead.research_data = research_data
             
             # Step 2: Visual Vibe Check (if applicable)
             if lead.platform in ["instagram", "tiktok"]:
@@ -195,6 +197,20 @@ class LeadGenerationOrchestrator:
     def _discover_contact(self, lead: Lead) -> Dict[str, Any]:
         """Discover contact information using Findymail."""
         try:
+            # First check if email was found in bio during research
+            research_data = lead.research_data or {}
+            bio_data = research_data.get("bio_data", {})
+            email_in_bio = bio_data.get("email_in_bio")
+            
+            if email_in_bio:
+                logger.info(f"Using email found in bio: {email_in_bio}")
+                return {
+                    "email": email_in_bio,
+                    "source": "bio",
+                    "success": True
+                }
+            
+            # Fall back to Findymail if no email in bio
             if lead.handle:
                 email_result = self.findymail.find_from_handle(
                     handle=lead.handle,

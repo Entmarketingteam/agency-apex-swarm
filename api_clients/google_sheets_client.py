@@ -464,6 +464,18 @@ class GoogleSheetsClient:
         elif research.get("error"):
             updates["research"] = f"Research error: {research.get('error')}"
         
+        # Get bio from research bio_data or research content
+        bio_data = research.get("bio_data", {})
+        if bio_data.get("bio"):
+            updates["bio"] = bio_data["bio"]
+        else:
+            # Try to extract from research content if bio_data not available
+            bio_match = re.search(r'[Bb]io[:\s]+(.+?)(?:\n\n|\n[A-Z]|$)', research_text, re.DOTALL)
+            if bio_match:
+                bio_text = bio_match.group(1).strip()
+                if len(bio_text) > 5:  # Reasonable bio length
+                    updates["bio"] = bio_text[:500]
+        
         # Map status
         status_map = {
             "completed": "completed",
